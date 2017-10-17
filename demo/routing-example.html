@@ -1,0 +1,43 @@
+<link rel="import" href="../poly-router.html">
+
+<dom-module id="routing-example">
+    <template>
+        <poly-router route="{{route}}"
+                     route-prefix="[[_routePrefix]]"
+                     routes="[[_routes]]"
+                     on-route-not-found="_handleNotFound"
+        ></poly-router>
+    </template>
+    <script>
+      class RoutingExample extends Polymer.Element {
+        static get is() {
+          return 'routing-example';
+        }
+
+        static get properties() {
+          return {
+            route: Object,
+            _routePrefix: {
+              type: String,
+              value: `${Polymer.rootPath}`,
+            },
+            _routes: {
+              type: Array,
+              value: [
+                {path: '/', component: 'h1'},
+                {path: '/first', component: 'h2'},
+                {path: '/first/second', component: 'h3'},
+                {path: '/path/:pathParam', component: 'h4'},
+                {path: '/path/:pathParam/:secondParam([0-9]{4})', component: 'h5'},
+              ],
+            },
+          };
+        }
+
+        _handleNotFound() {
+          console.error('Route not found')
+        }
+      }
+      customElements.define(RoutingExample.is, RoutingExample);
+    </script>
+</dom-module>

@@ -1,0 +1,124 @@
+<dom-module id="poly-router">
+    <template>
+        <slot></slot>
+    </template>
+    <script>
+      (() => {
+        const defaultRegex = '([A-Za-z0-9-_]+)';
+        const splitPathParam = (item) => {
+          const firstParens = item.indexOf('(');
+          return {
+            param: firstParens > 0 ? item.substr(0, firstParens) : item,
+            regex: firstParens > 0 ? item.substr(firstParens) : undefined,
+          };
+        };
+
+        class PolyRouter extends Polymer.Element {
+          static get is() {
+            return 'poly-router';
+          }
+
+          static get properties() {
+            return {
+              route: {
+                type: Object,
+                observer: 'updateRoute',
+              },
+              routePrefix: String,
+              routes: {
+                type: Object,
+              },
+            };
+          }
+
+          connectedCallback() {
+            super.connectedCallback();
+            this.addEventListener('router-link-to', (e) => {
+              this.route.path = e.detail.to;
+              this.notifyPath('route.path');
+              this.updateRoute(this.route);
+            });
+            if (!this.isInitialized()) {
+              this._parseRoutes();
+            }
+          }
+
+          isInitialized() {
+            return this.routes &&
+              this.routes.length &&
+              this.routes.length > 1 &&
+              this.routes[0].parsedRoute;
+          }
+
+          updateRoute(route) {
+            if (route.prefix !== this.routePrefix) {
+              return;
+            }
+            if (!this.isInitialized()) {
+              this._parseRoutes();
+            }
+
+            this.shadowRoot.querySelector('slot').innerHTML = '';
+            const path = route.path.length > 0 ? route.path : '/';
+            const firstMatchingRoute = this.routes
+              .find(item => new RegExp(item.parsedRoute).test(path));
+
+            if (firstMatchingRoute) {
+              const matches = path.match(firstMatchingRoute.parsedRoute);
+              const attributes = {};
+              if (matches && matches.length > 1) {
+                firstMatchingRoute.pathParams
+                  .forEach((pathParam, index) => {
+                    const attributeName = pathParam.replace(/([A-Z])/g, '-$1').toLowerCase();
+                    attributes[attributeName] = matches[index + 1];
+                  });
+              }
+
+              this._lazyloadOrCreate(firstMatchingRoute, attributes);
+            } else {
+              this.handleError();
+            }
+          }
+
+          createComponent(component, attributes) {
+            const child = document.createElement(component);
+            Object.keys(attributes).forEach(item => child.setAttribute(item, attributes[item]));
+            this.shadowRoot.querySelector('slot').appendChild(child);
+          }
+
+          handleError() {
+            this.dispatchEvent(new CustomEvent('route-not-found'));
+          }
+
+          _parseRoutes() {
+            this.routes.forEach((routeItem) => {
+              const splittedUrl = routeItem.path.split('/').map((item) => {
+                if (item.indexOf(':') < 0) {
+                  return item;
+                }
+                const {param, regex} = splitPathParam(item);
+                routeItem.pathParams = routeItem.pathParams || [];
+                routeItem.pathParams.push(param.slice(1));
+                return regex || defaultRegex;
+              });
+              routeItem.parsedRoute = `^${splittedUrl.join('\\/')}\\/?$`;
+            });
+          }
+
+          _lazyloadOrCreate(matchingRoute, attributes) {
+            if (matchingRoute.importHref) {
+              Polymer.importHref(
+                Polymer.rootPath + matchingRoute.importHref,
+                () => this.createComponent(matchingRoute.component, attributes),
+                () => this.handleError(),
+              );
+            } else {
+              this.createComponent(matchingRoute.component, attributes);
+            }
+          }
+        }
+
+        customElements.define(PolyRouter.is, PolyRouter);
+      })();
+    </script>
+</dom-module>

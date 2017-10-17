@@ -1,0 +1,15 @@
+{
+  "name": "poly-router",
+  "version": "1.0.0",
+  "description": "A router webcomponent",
+  "main": "index.js",
+  "scripts": {
+    "start": "polymer serve -o",
+    "test": "polymer test --skip-selenium-install"
+  },
+  "keywords": [
+    "router",
+    "webcomponent"
+  ],
+  "license": "MIT"
+}
